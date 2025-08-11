@@ -1,33 +1,32 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { EpicImage } from '../App';
-import { Loader2 } from 'lucide-react';
+import { Loader2, SkipBack, SkipForward, Pause, Play } from 'lucide-react';
+import { EpicImage } from '../types/';
 
 interface EarthCarouselProps {
   images: EpicImage[];
   selectedDate: string;
-  currentImageIndex: number;
-  isPlaying: boolean;
-  onImageIndexChange: (index: number) => void;
-  onPlayingChange: (playing: boolean) => void;
 }
 
-const EarthCarousel: React.FC<EarthCarouselProps> = ({
-  images,
-  selectedDate,
-  currentImageIndex,
-  isPlaying,
-  onImageIndexChange,
-  onPlayingChange,
-}) => {
+const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const [allImagesLoaded, setAllImagesLoaded] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [preloadedImages, setPreloadedImages] = useState<{ [key: string]: string }>({});
 
-  const getImageUrl = useCallback((image: EpicImage) => {
-    return `/api/v1/epic/image/${selectedDate}/${image.image}`;
-    // const [year, month, day] = selectedDate.split('-');
-    // return `https://api.nasa.gov/EPIC/archive/natural/${year}/${month}/${day}/png/${image.image}.png?api_key=${NASA_API_KEY}`;
-  }, [selectedDate]);
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const handlePrevious = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const handleNext = () => {
+    if (images.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }
+  };
 
   // Preload images
   useEffect(() => {
@@ -35,6 +34,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
 
     setAllImagesLoaded(false);
     setLoadingProgress(0);
+    setCurrentImageIndex(0);
     setPreloadedImages({});
 
     const preloadImages = async () => {
@@ -58,7 +58,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
           const handleError = () => {
             console.error(`Failed to preload image ${image.identifier}`);
             // Even on error, cache the URL so we can try to display it
-            imageCache[image.identifier] = getImageUrl(image);
+            imageCache[image.identifier] = `/api/v1/epic/image/${image.image}`;
             loadedCount++;
             setLoadingProgress((loadedCount / totalImages) * 100);
             resolve();
@@ -66,7 +66,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
 
           img.onload = handleLoad;
           img.onerror = handleError;
-          img.src = getImageUrl(image);
+          img.src = `/api/v1/epic/image/${image.image}`;
         });
       });
 
@@ -83,7 +83,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
     };
 
     preloadImages();
-  }, [images, getImageUrl]);
+  }, [images]);
 
   // Auto-play functionality - only start when images are loaded
   useEffect(() => {
@@ -94,7 +94,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
     console.log('Starting auto-play with', images.length, 'images');
     
     const interval = setInterval(() => {
-      onImageIndexChange((prevIndex) => {
+      setCurrentImageIndex((prevIndex) => {
         const nextIndex = (prevIndex + 1) % images.length;
         return nextIndex;
       });
@@ -104,10 +104,11 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
       console.log('Clearing auto-play interval');
       clearInterval(interval);
     };
-  }, [isPlaying, allImagesLoaded, images.length, onImageIndexChange]);
+  }, [isPlaying, allImagesLoaded, images]);
+  
 
   const currentImage = images[currentImageIndex];
-  const currentImageUrl = currentImage ? preloadedImages[currentImage.identifier] || getImageUrl(currentImage) : '';
+  const currentImageUrl = currentImage ? preloadedImages[currentImage.identifier] : '';
 
   if (!currentImage) {
     return null;
@@ -180,8 +181,8 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
           <button
             key={index}
             onClick={() => {
-              onImageIndexChange(index);
-              onPlayingChange(false);
+              setCurrentImageIndex(index);
+              setIsPlaying(false);
             }}
             className={`w-2 h-2 rounded-full transition-all duration-200 ${
               index === currentImageIndex 
@@ -205,6 +206,64 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
           <span>Source: DSCOVR Satellite</span>
         </div>
       </div>
+
+      {/* Controls */}
+      <div className="flex items-center justify-center space-x-4">
+        <button
+          onClick={handlePrevious}
+          className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
+          disabled={images.length <= 1}
+        >
+          <SkipBack className="h-5 w-5" />
+        </button>
+        
+        <button
+          onClick={handlePlayPause}
+          className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-200 hover:scale-105 shadow-lg"
+        >
+          {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+        </button>
+        
+        <button
+          onClick={handleNext}
+          className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
+          disabled={images.length <= 1}
+        >
+          <SkipForward className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Image Info */}
+      {images[currentImageIndex] && (
+        <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 mt-4">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">Image Details</h3>
+              <p className="text-blue-200 text-sm mb-2">
+                <span className="font-medium">Identifier:</span> {images[currentImageIndex].identifier}
+              </p>
+              <p className="text-blue-200 text-sm mb-2">
+                <span className="font-medium">Caption:</span> {images[currentImageIndex].caption}
+              </p>
+              <p className="text-blue-200 text-sm">
+                <span className="font-medium">Date:</span> {images[currentImageIndex].date}
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">Earth Coordinates</h3>
+              <p className="text-blue-200 text-sm mb-2">
+                <span className="font-medium">Latitude:</span> {images[currentImageIndex].centroid_coordinates.lat.toFixed(2)}°
+              </p>
+              <p className="text-blue-200 text-sm">
+                <span className="font-medium">Longitude:</span> {images[currentImageIndex].centroid_coordinates.lon.toFixed(2)}°
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 };
