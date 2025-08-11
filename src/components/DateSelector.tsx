@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 
 interface DateSelectorProps {
@@ -16,6 +16,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const selectedDateRef = useRef<HTMLButtonElement>(null);
 
   const formatDisplayDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -26,6 +27,42 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       day: 'numeric' 
     });
   };
+
+  useEffect(() => {
+    console.log('availableDates amount:', availableDates.length);
+  }, [availableDates]);
+
+  // useEffect(() => {
+  //   if (isOpen && selectedDate && selectedDateRef.current) {
+  //     // Small delay to ensure the dropdown is fully rendered
+  //     setTimeout(() => {
+  //       selectedDateRef.current?.scrollIntoView({
+  //         behavior: 'smooth',
+  //         block: 'center'
+  //       });
+  //     }, 100);
+  //   }
+  // }, [isOpen, selectedDate]);
+
+  // Auto-scroll to selected date when dropdown opens
+  useEffect(() => {
+    if (isOpen && selectedDate && availableDates.length > 0) {
+      const selectedIndex = availableDates.indexOf(selectedDate);
+      if (selectedIndex !== -1) {
+        // Small delay to ensure the dropdown is rendered
+        setTimeout(() => {
+          const dropdown = document.querySelector('.date-dropdown');
+          const selectedItem = dropdown?.querySelector(`[data-date="${selectedDate}"]`);
+          if (selectedItem && dropdown) {
+            selectedItem.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            });
+          }
+        }, 50);
+      }
+    }
+  }, [isOpen, selectedDate, availableDates]);
 
   return (
     <div className="relative">
@@ -40,7 +77,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
             <div>
               <p className="text-white font-medium">Selected Date</p>
               <p className="text-blue-200 text-sm">
-                {loading || typeof availableDates === 'undefined' || availableDates.length === 0 ? 'Loading...' : formatDisplayDate(selectedDate)}
+                {loading ? 'Loading...' : formatDisplayDate(selectedDate)}
               </p>
             </div>
           </div>
@@ -52,10 +89,11 @@ const DateSelector: React.FC<DateSelectorProps> = ({
         </button>
 
         {isOpen && !loading && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto backdrop-blur-sm">
+          <div className="date-dropdown absolute top-full left-0 right-0 z-50 mt-2 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto backdrop-blur-sm">
             {availableDates.map((date) => (
               <button
                 key={date}
+                data-date={date}
                 onClick={() => {
                   onDateChange(date);
                   setIsOpen(false);

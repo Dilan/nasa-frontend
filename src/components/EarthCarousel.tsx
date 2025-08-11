@@ -96,7 +96,6 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({
     const interval = setInterval(() => {
       onImageIndexChange((prevIndex) => {
         const nextIndex = (prevIndex + 1) % images.length;
-        console.log(`Auto-advancing from image ${prevIndex} to ${nextIndex}`);
         return nextIndex;
       });
     }, 600); // Slightly faster for smoother rotation

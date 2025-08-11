@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, Play, Pause, SkipBack, SkipForward, Globe, Satellite } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Play, Pause, SkipBack, SkipForward, Globe, Satellite } from 'lucide-react';
 import RateLimitDisplay from '../components/RateLimitDisplay';
 import DateSelector from '../components/DateSelector';
 import EarthCarousel from '../components/EarthCarousel';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { EpicImage } from '../types';
 
-const NASA_API_KEY = '*******'; // Replace with your NASA API key
-
 function HomePage() {
-  const [selectedDate, setSelectedDate] = useState<string>('2024-01-01');
+  const [selectedDate, setSelectedDate] = useState<string>('2015-06-13');
   const [images, setImages] = useState<EpicImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,29 +22,27 @@ function HomePage() {
       setLoading(true);
       
       try {
-        /*
-        const dates = [];
-        const today = new Date('2020-07-15');
-        for (let i = 0; i < 30; i++) {
-          const date = new Date(today);
-          date.setDate(date.getDate() - i);
-          dates.push(date.toISOString().split('T')[0]);
-        }
-        */
         const response = await fetch('/api/v1/epic/available-dates');
-        // get from HEADERs X-RateLimit-Limit and X-RateLimit-Remaining
-        const rateLimitLimit = parseInt(response.headers.get('X-RateLimit-Limit') || '0');
-        const rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '0');
-        setApiLimit({ used: rateLimitLimit - rateLimitRemaining, total: rateLimitLimit });
+
+        // HEADERS: [X-RateLimit-Limit] & [X-RateLimit-Remaining]
+        if (response.headers.get('X-RateLimit-Remaining')) {
+          const rateLimitLimit = parseInt(response.headers.get('X-RateLimit-Limit') || '0');
+          const rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '0');
+          setApiLimit({ used: rateLimitLimit - rateLimitRemaining, total: rateLimitLimit });
+        }
 
         const datesList = await response.json();
         const dates = [];
-        for (let i = 0; i < rateLimitLimit; i++) {
+        // Use the actual length of datesList instead of rateLimitLimit
+        for (let i = 0; i < datesList.length; i++) {
           const date = new Date(datesList[i]);
           dates.push(date.toISOString().split('T')[0]);
         }
 
         setAvailableDates(dates);
+
+        console.log('dates amount', dates.length);
+
       } catch (error) {
         console.error('Failed to fetch available dates:', error);
       } finally {
@@ -57,19 +53,22 @@ function HomePage() {
     fetchAvailableDates();
   }, []);
 
-  const fetchEpicImages = useCallback(async (date: string) => {
+  const fetchEpicImages = async (date: string) => {
     setLoading(true);
     setError(null);
     setLoadingProgress(0);
 
     try {
-      // Simulate API rate limit updates
-      setApiLimit(prev => ({ ...prev, used: prev.used + 1 }));
+      
+      // in case of NASA API, use `https://api.nasa.gov/EPIC/api/natural/date/${date}?api_key=${NASA_API_KEY}`
+      const response = await fetch(`/api/v1/epic/?date=${date}`);
 
-      const response = await fetch(
-        // `https://api.nasa.gov/EPIC/api/natural/date/${date}?api_key=${NASA_API_KEY}`
-        `/api/v1/epic/?date=${date}`
-      );
+      // HEADERS: [X-RateLimit-Limit] & [X-RateLimit-Remaining]
+      if (response.headers.get('X-RateLimit-Remaining')) {
+        const rateLimitLimit = parseInt(response.headers.get('X-RateLimit-Limit') || '0');
+        const rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '0');
+        setApiLimit({ used: rateLimitLimit - rateLimitRemaining, total: rateLimitLimit });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -84,9 +83,21 @@ function HomePage() {
       setImages(data);
       setCurrentImageIndex(0);
       
-      // Simulate loading progress for preloading images
+      // loading progress for preloading images
       const imagePromises = data.map((img, _index) => {
+
+        // img.image has format: epic_1b_20150613110250
+        // 20150613 is the date
+       
+
         return new Promise((resolve) => {
+          let dateWithoutHyphens = date.replace(/-/g, '');
+          if (!img.image.includes(dateWithoutHyphens)) {
+            console.log('[img.image]', img.image, 'does not belong to', date);
+          } else {
+            console.log('[img.image]', img.image, 'belongs to', date);
+          }
+          
           const image = new Image();
           image.onload = () => {
             setLoadingProgress((prev) => prev + (100 / Math.min(data.length, 10)));
@@ -107,14 +118,13 @@ function HomePage() {
       setLoading(false);
       setLoadingProgress(100);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchEpicImages(selectedDate);
-  }, [selectedDate, fetchEpicImages]);
+  }, [selectedDate]);
 
   const handlePlayPause = () => {
-    console.log('Play/Pause clicked. Current state:', isPlaying);
     setIsPlaying(!isPlaying);
   };
 
