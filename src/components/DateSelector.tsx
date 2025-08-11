@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 
 interface DateSelectorProps {
+  loading: boolean;
   selectedDate: string;
   onDateChange: (date: string) => void;
   availableDates: string[];
@@ -9,14 +10,13 @@ interface DateSelectorProps {
 }
 
 const DateSelector: React.FC<DateSelectorProps> = ({ 
+  loading,
   selectedDate, 
   onDateChange, 
   availableDates,
   disabled = false 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const selectedDateRef = useRef<HTMLButtonElement>(null);
 
   const formatDisplayDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -27,22 +27,6 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       day: 'numeric' 
     });
   };
-
-  useEffect(() => {
-    console.log('availableDates amount:', availableDates.length);
-  }, [availableDates]);
-
-  // useEffect(() => {
-  //   if (isOpen && selectedDate && selectedDateRef.current) {
-  //     // Small delay to ensure the dropdown is fully rendered
-  //     setTimeout(() => {
-  //       selectedDateRef.current?.scrollIntoView({
-  //         behavior: 'smooth',
-  //         block: 'center'
-  //       });
-  //     }, 100);
-  //   }
-  // }, [isOpen, selectedDate]);
 
   // Auto-scroll to selected date when dropdown opens
   useEffect(() => {

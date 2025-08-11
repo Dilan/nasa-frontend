@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Loader2, SkipBack, SkipForward, Pause, Play } from 'lucide-react';
 import { EpicImage } from '../types/';
 
@@ -42,7 +42,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
       let loadedCount = 0;
       const imageCache: { [key: string]: string } = {};
 
-      const imagePromises = images.map((image, index) => {
+      const imagePromises = images.map((image) => {
         return new Promise<void>((resolve) => {
           const img = new Image();
           img.crossOrigin = 'anonymous';

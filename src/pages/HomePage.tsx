@@ -1,29 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Satellite } from 'lucide-react';
 import RateLimitDisplay from '../components/RateLimitDisplay';
 import DateSelector from '../components/DateSelector';
 import EarthCarousel from '../components/EarthCarousel';
 import { EpicImage } from '../types';
-import useImagePreloader from '../hooks/useImagePreloader';
-
 
 function HomePage() {
-  const [selectedDate, setSelectedDate] = useState<string>('2015-06-13');
+  const [selectedDate, setSelectedDate] = useState<string>('2025-07-15');
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [images, setImages] = useState<EpicImage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [apiLimit, setApiLimit] = useState({ used: 0, total: 2000 });
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-
-  // Use the image preloader hook
-  /*
-  useImagePreloader({
-    images: images,
-    date: selectedDate,
-    onProgress: setLoadingProgress
-  });
-  */
-
+  
   useEffect(() => {
     const fetchAvailableDates = async () => {
       setLoading(true);
@@ -100,8 +89,6 @@ function HomePage() {
     fetchEpicImages(selectedDate);
   }, [selectedDate]);
 
-  
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
       {/* Header */}
@@ -122,6 +109,7 @@ function HomePage() {
         {/* Date Selection */}
         <div className="mb-8 relative z-10">
           <DateSelector
+            loading={loading}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             availableDates={availableDates}
@@ -135,8 +123,6 @@ function HomePage() {
             selectedDate={selectedDate}
           />
         </div>
-
-        
       </main>
     </div>
   );
