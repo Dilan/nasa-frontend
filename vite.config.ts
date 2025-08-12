@@ -28,7 +28,14 @@ export default defineConfig({
       '/api/v1': {
         target: 'http://localhost:4200',
         changeOrigin: true,
-
+      },
+      /*
+          /epic/images/epic_1b_20200715001752.png -> http://localhost:4200/api/v1/epic/images/epic_1b_20200715001752.png
+      */
+      '/epic/images': {
+        target: 'http://localhost:4200',
+        rewrite: (path) => path.replace(/^\/epic\/images/, '/api/v1/epic/images'),
+        changeOrigin: true,
       },
     },
   },

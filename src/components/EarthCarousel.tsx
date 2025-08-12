@@ -67,7 +67,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
 
           img.onload = handleLoad;
           img.onerror = handleError;
-          img.src = `/api/v1/epic/image/${image.image}`;
+          img.src = `/epic/images/${image.image}.png`;
         });
       });
 
