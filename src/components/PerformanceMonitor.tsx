@@ -45,9 +45,11 @@ const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ images, imageLo
     });
   }, [images, imageLoadStatus, startTime]);
 
+  /*
   if (process.env.NODE_ENV === 'production') {
     return null; // Don't show in production
   }
+  */
 
   return (
     <div className="fixed bottom-4 right-4 bg-black/80 backdrop-blur-sm rounded-lg p-4 text-white text-xs max-w-xs z-50">
