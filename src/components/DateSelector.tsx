@@ -61,7 +61,14 @@ const DateSelector: React.FC<DateSelectorProps> = ({
             <div>
               <p className="text-white font-medium">Selected Date</p>
               <p className="text-blue-200 text-sm">
-                {loading ? 'Loading...' : formatDisplayDate(selectedDate)}
+                {loading ? (
+                  <span className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Loading...</span>
+                  </span>
+                ) : (
+                  formatDisplayDate(selectedDate)
+                )}
               </p>
             </div>
           </div>

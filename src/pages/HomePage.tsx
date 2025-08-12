@@ -52,7 +52,6 @@ function HomePage() {
   const fetchEpicImages = async (date: string) => {
     setLoading(true);
     setError(null);
-    setImages([]);
 
     try {
       // NASA API, use `https://api.nasa.gov/EPIC/api/natural/date/${date}?api_key=${NASA_API_KEY}`
@@ -75,6 +74,7 @@ function HomePage() {
         throw new Error('No images available for this date. Please try a different date.');
       }
 
+      // Only update images after successful fetch
       setImages(data);
 
     } catch (err) {
@@ -118,7 +118,19 @@ function HomePage() {
         </div>
 
         <div className="max-w-7xl mx-auto relative">
+          {/* Loading overlay for smooth transitions */}
+          {loading && (
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-white font-medium">Loading new date...</p>
+                <p className="text-blue-200 text-sm">Fetching Earth images</p>
+              </div>
+            </div>
+          )}
+          
           <EarthCarousel
+            loading={loading}
             images={images}
             selectedDate={selectedDate}
           />

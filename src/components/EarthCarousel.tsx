@@ -4,11 +4,12 @@ import { EpicImage } from '../types/';
 import LoadingSpinner from './LoadingSpinner';
 
 interface EarthCarouselProps {
+  loading: boolean;
   images: EpicImage[];
   selectedDate: string;
 }
 
-const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) => {
+const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selectedDate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [allImagesLoaded, setAllImagesLoaded] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -29,14 +30,19 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
     }
   };
 
+  // Reset preloading state when new images are received
+  useEffect(() => {
+    if (images.length > 0) {
+      setAllImagesLoaded(false);
+      setLoadingProgress(0);
+      setCurrentImageIndex(0);
+      setPreloadedImages({});
+    }
+  }, [images]);
+
   // Preload images
   useEffect(() => {
     if (images.length === 0) return;
-
-    setAllImagesLoaded(false);
-    setLoadingProgress(0);
-    setCurrentImageIndex(0);
-    setPreloadedImages({});
 
     const preloadImages = async () => {
       const totalImages = images.length;
@@ -86,6 +92,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
     preloadImages();
   }, [images]);
 
+  
   // Auto-play functionality - only start when images are loaded
   useEffect(() => {
     if (!isPlaying || !allImagesLoaded || images.length <= 1) {
@@ -107,48 +114,36 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
     };
   }, [isPlaying, allImagesLoaded, images]);
   
+  if (loading) {
+    return (
+      <div className="relative">
+        <LoadingSpinner progress={loadingProgress} context="initial" />
+      </div>
+    );
+  }
 
   const currentImage = images[currentImageIndex];
   const currentImageUrl = currentImage ? preloadedImages[currentImage.identifier] : '';
 
-  // if (!currentImage) {
-  //   return null;
-  // }
-
   // Show loading state if images aren't ready
-  if (!allImagesLoaded) {
+  if (!allImagesLoaded || !currentImage) {
     return (
       <div className="relative">
-        {/* <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl mx-auto max-w-2xl">
-          <div className="aspect-square relative flex items-center justify-center">
-            <div className="text-center">
-              <Loader2 className="h-12 w-12 text-blue-400 animate-spin mx-auto mb-4" />
-              <p className="text-white text-lg font-medium">Preloading Earth Images...</p>
-              <p className="text-blue-200 text-sm mb-4">
-                Loading {images.length} images (~2.5MB each)
-              </p>
-              <div className="w-64 bg-white/10 rounded-full h-2 overflow-hidden mx-auto">
-                <div 
-                  className="h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-300"
-                  style={{ width: `${loadingProgress}%` }}
-                />
-              </div>
-              <p className="text-blue-300 text-sm mt-2">
-                {Math.round(loadingProgress)}% complete
-              </p>
-            </div>
-          </div>
-        </div> */}
-
-        {loadingProgress > 0 && (
-          <LoadingSpinner progress={loadingProgress} />
+        {/* Show main loading state immediately */}
+        {loading ? (
+          <LoadingSpinner progress={loadingProgress} context="initial" />
+        ) : (
+          /* Show preloading state when main loading is done but images aren't ready */
+          loadingProgress > 0 && (
+            <LoadingSpinner progress={loadingProgress} context="preloading" />
+          )
         )}
       </div>
     );
   }
 
   return (
-    <div className="grid lg:grid-cols-2 gap-8 items-start">
+    <div className="grid lg:grid-cols-2 gap-8 items-start animate-fade-in">
       {/* Left Side: Image and Controls */}
       <div className="space-y-6">
         {/* Main Image Display */}
@@ -157,7 +152,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
             <img
               src={currentImageUrl}
               alt={`Earth from DSCOVR - ${currentImage.caption}`}
-              className="w-full h-full object-cover transition-opacity duration-200"
+              className="w-full h-full object-cover transition-all duration-300 ease-in-out animate-fade-in"
               onError={(e) => {
                 console.error('Image failed to load:', e);
               }}
@@ -191,10 +186,10 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
                 setCurrentImageIndex(index);
                 setIsPlaying(false);
               }}
-              className={`w-2 h-2 rounded-full transition-all duration-200 ${
+              className={`w-2 h-2 rounded-full transition-all duration-300 ease-in-out ${
                 index === currentImageIndex 
-                  ? 'bg-blue-400 w-8' 
-                  : 'bg-white/30 hover:bg-white/50'
+                  ? 'bg-blue-400 w-8 scale-110' 
+                  : 'bg-white/30 hover:bg-white/50 hover:scale-105'
               }`}
             />
           ))}
@@ -205,7 +200,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
 
           <button
             onClick={handlePrevious}
-            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
+            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={images.length <= 1}
           >
             <SkipBack className="h-5 w-5" />
@@ -213,14 +208,14 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
           
           <button
             onClick={handlePlayPause}
-            className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-200 hover:scale-105 shadow-lg"
+            className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
           >
             {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
           </button>
           
           <button
             onClick={handleNext}
-            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
+            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={images.length <= 1}
           >
             <SkipForward className="h-5 w-5" />
