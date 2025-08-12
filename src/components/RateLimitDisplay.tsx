@@ -14,7 +14,8 @@ const RateLimitDisplay: React.FC<RateLimitDisplayProps> = ({ apiLimit }) => {
 
   return (
     <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-3 border border-white/20">
-      <div className="flex items-center space-x-3">
+      <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+        {/* API Requests Title */}
         <div className="flex items-center space-x-2">
           {isLow ? (
             <AlertTriangle className="h-4 w-4 text-amber-400" />
@@ -24,7 +25,8 @@ const RateLimitDisplay: React.FC<RateLimitDisplayProps> = ({ apiLimit }) => {
           <span className="text-white font-medium text-sm">API Requests</span>
         </div>
         
-        <div className="text-right">
+        {/* API Requests Count */}
+        <div className="text-left sm:text-right">
           <div className="text-white font-bold">
             {apiLimit.used.toLocaleString()} / {apiLimit.total.toLocaleString()}
           </div>

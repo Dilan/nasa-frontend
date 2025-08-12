@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { SkipBack, SkipForward, Pause, Play } from 'lucide-react';
 import { EpicImage } from '../types/';
 import LoadingSpinner from './LoadingSpinner';
+import PerformanceMonitor from './PerformanceMonitor';
 
 interface EarthCarouselProps {
   loading: boolean;
@@ -11,10 +12,9 @@ interface EarthCarouselProps {
 
 const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selectedDate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [allImagesLoaded, setAllImagesLoaded] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [preloadedImages, setPreloadedImages] = useState<{ [key: string]: string }>({});
+  const [imageLoadStatus, setImageLoadStatus] = useState<{ [key: string]: 'loading' | 'loaded' | 'error' }>({});
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -30,74 +30,91 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
     }
   };
 
-  // Reset preloading state when new images are received
+  // Reset state when new images are received
   useEffect(() => {
     if (images.length > 0) {
-      setAllImagesLoaded(false);
-      setLoadingProgress(0);
       setCurrentImageIndex(0);
       setPreloadedImages({});
+      setImageLoadStatus({});
+      
+      // Start preloading the first few images immediately
+      preloadCriticalImages();
     }
   }, [images]);
 
-  // Preload images
+  // Stop playing when date changes
+  useEffect(() => {
+    setIsPlaying(false);
+  }, [selectedDate]);
+
+  // Preload critical images (first 3) for immediate display
+  const preloadCriticalImages = useCallback(async () => {
+    if (images.length === 0) return;
+
+    const criticalImages = images.slice(0, 3);
+    
+    criticalImages.forEach((image) => {
+      preloadSingleImage(image, true);
+    });
+  }, [images]);
+
+  // Preload a single image
+  const preloadSingleImage = useCallback(async (image: EpicImage, isCritical = false) => {
+    if (preloadedImages[image.identifier]) return; // Already loaded
+
+    setImageLoadStatus(prev => ({ ...prev, [image.identifier]: 'loading' }));
+
+    return new Promise<void>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      const handleLoad = () => {
+        setPreloadedImages(prev => ({ ...prev, [image.identifier]: img.src }));
+        setImageLoadStatus(prev => ({ ...prev, [image.identifier]: 'loaded' }));
+        resolve();
+      };
+
+      const handleError = () => {
+        console.error(`Failed to preload image ${image.identifier}`);
+        // Fallback to direct API URL
+        setPreloadedImages(prev => ({ ...prev, [image.identifier]: `/api/v1/epic/image/${image.image}` }));
+        setImageLoadStatus(prev => ({ ...prev, [image.identifier]: 'error' }));
+        resolve();
+      };
+
+      img.onload = handleLoad;
+      img.onerror = handleError;
+      img.src = `/epic/images/${image.image}.png`;
+    });
+  }, [preloadedImages]);
+
+  // Progressive preloading in background
   useEffect(() => {
     if (images.length === 0) return;
 
-    const preloadImages = async () => {
-      const totalImages = images.length;
-      let loadedCount = 0;
-      const imageCache: { [key: string]: string } = {};
-
-      const imagePromises = images.map((image) => {
-        return new Promise<void>((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          
-          const handleLoad = () => {
-            // Cache the loaded image URL
-            imageCache[image.identifier] = img.src;
-            loadedCount++;
-            setLoadingProgress((loadedCount / totalImages) * 100);
-            resolve();
-          };
-
-          const handleError = () => {
-            console.error(`Failed to preload image ${image.identifier}`);
-            // Even on error, cache the URL so we can try to display it
-            imageCache[image.identifier] = `/api/v1/epic/image/${image.image}`;
-            loadedCount++;
-            setLoadingProgress((loadedCount / totalImages) * 100);
-            resolve();
-          };
-
-          img.onload = handleLoad;
-          img.onerror = handleError;
-          img.src = `/epic/images/${image.image}.png`;
-        });
-      });
-
-      try {
-        await Promise.all(imagePromises);
-        setPreloadedImages(imageCache);
-        setAllImagesLoaded(true);
-        console.log(`Successfully preloaded ${images.length} images`);
-      } catch (error) {
-        console.error('Error preloading images:', error);
-        setPreloadedImages(imageCache);
-        setAllImagesLoaded(true); // Allow to proceed even with errors
+    const preloadRemainingImages = async () => {
+      // Start with critical images (already handled above)
+      // Then preload remaining images progressively
+      const remainingImages = images.slice(3);
+      
+      for (const image of remainingImages) {
+        await preloadSingleImage(image);
+        // Small delay to prevent overwhelming the browser
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     };
 
-    preloadImages();
-  }, [images]);
+    // Start progressive preloading after a short delay
+    const timer = setTimeout(preloadRemainingImages, 500);
+    return () => clearTimeout(timer);
+  }, [images, preloadSingleImage]);
 
-  
-  // Auto-play functionality - only start when images are loaded
+  // Auto-play functionality - only start when current image is loaded
   useEffect(() => {
-    if (!isPlaying || !allImagesLoaded || images.length <= 1) {
-      return;
-    }
+    if (!isPlaying || images.length <= 1) return;
+
+    const currentImage = images[currentImageIndex];
+    if (!currentImage || imageLoadStatus[currentImage.identifier] !== 'loaded') return;
 
     console.log('Starting auto-play with', images.length, 'images');
     
@@ -106,38 +123,31 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
         const nextIndex = (prevIndex + 1) % images.length;
         return nextIndex;
       });
-    }, 600); // Slightly faster for smoother rotation
+    }, 600);
 
     return () => {
       console.log('Clearing auto-play interval');
       clearInterval(interval);
     };
-  }, [isPlaying, allImagesLoaded, images]);
+  }, [isPlaying, currentImageIndex, images, imageLoadStatus]);
   
   if (loading) {
     return (
       <div className="relative">
-        <LoadingSpinner progress={loadingProgress} context="initial" />
+        <LoadingSpinner progress={100} context="initial" />
       </div>
     );
   }
 
   const currentImage = images[currentImageIndex];
   const currentImageUrl = currentImage ? preloadedImages[currentImage.identifier] : '';
+  const isCurrentImageLoaded = currentImage && imageLoadStatus[currentImage.identifier] === 'loaded';
 
-  // Show loading state if images aren't ready
-  if (!allImagesLoaded || !currentImage) {
+  // Show content immediately if we have images, even if not all are preloaded
+  if (!currentImage) {
     return (
       <div className="relative">
-        {/* Show main loading state immediately */}
-        {loading ? (
-          <LoadingSpinner progress={loadingProgress} context="initial" />
-        ) : (
-          /* Show preloading state when main loading is done but images aren't ready */
-          loadingProgress > 0 && (
-            <LoadingSpinner progress={loadingProgress} context="preloading" />
-          )
-        )}
+        <LoadingSpinner progress={0} context="initial" />
       </div>
     );
   }
@@ -149,14 +159,24 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
         {/* Main Image Display */}
         <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl mx-auto max-w-xl lg:max-w-lg">
           <div className="aspect-square relative">
-            <img
-              src={currentImageUrl}
-              alt={`Earth from DSCOVR - ${currentImage.caption}`}
-              className="w-full h-full object-cover transition-all duration-300 ease-in-out animate-fade-in"
-              onError={(e) => {
-                console.error('Image failed to load:', e);
-              }}
-            />
+            {/* Show current image if loaded, otherwise show loading state */}
+            {currentImageUrl && isCurrentImageLoaded ? (
+              <img
+                src={currentImageUrl}
+                alt={`Earth from DSCOVR - ${currentImage.caption}`}
+                className="w-full h-full object-cover transition-all duration-300 ease-in-out animate-fade-in"
+                onError={(e) => {
+                  console.error('Image failed to load:', e);
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                  <p className="text-white text-sm">Loading image...</p>
+                </div>
+              </div>
+            )}
             
             {/* Overlay with image info */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
@@ -197,7 +217,6 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
 
         {/* Controls */}
         <div className="flex items-center justify-center space-x-4">
-
           <button
             onClick={handlePrevious}
             className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -209,6 +228,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
           <button
             onClick={handlePlayPause}
             className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
+            disabled={!isCurrentImageLoaded}
           >
             {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
           </button>
@@ -220,7 +240,6 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
           >
             <SkipForward className="h-5 w-5" />
           </button>
-          
         </div>
 
         {/* Image Counter */}
@@ -311,10 +330,23 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
                   {isPlaying ? "Playing" : "Paused"}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-blue-200">Preloaded:</span>
+                <span className="text-white">
+                  {Object.values(imageLoadStatus).filter(status => status === 'loaded').length} / {images.length}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Performance Monitor (Development Only) */}
+      <PerformanceMonitor 
+        images={images}
+        imageLoadStatus={imageLoadStatus}
+        loading={loading}
+      />
     </div>
   );
 };

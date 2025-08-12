@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Satellite } from 'lucide-react';
 import RateLimitDisplay from '../components/RateLimitDisplay';
 import DateSelector from '../components/DateSelector';
@@ -13,43 +13,39 @@ function HomePage() {
   const [_error, setError] = useState<string | null>(null);
   const [apiLimit, setApiLimit] = useState({ used: 0, total: 2000 });
   
-  useEffect(() => {
-    const fetchAvailableDates = async () => {
-      setLoading(true);
-      
-      try {
-        const response = await fetch('/api/v1/epic/available-dates');
+  // Memoize the fetch function to prevent unnecessary re-creations
+  const fetchAvailableDates = useCallback(async () => {
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/api/v1/epic/available-dates');
 
-        // HEADERS: [X-RateLimit-Limit] & [X-RateLimit-Remaining]
-        if (response.headers.get('X-RateLimit-Remaining')) {
-          const rateLimitLimit = parseInt(response.headers.get('X-RateLimit-Limit') || '0');
-          const rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '0');
-          setApiLimit({ used: rateLimitLimit - rateLimitRemaining, total: rateLimitLimit });
-        }
-
-        const datesList = await response.json();
-        const dates = [];
-        // Use the actual length of datesList instead of rateLimitLimit
-        for (let i = 0; i < datesList.length; i++) {
-          const date = new Date(datesList[i]);
-          dates.push(date.toISOString().split('T')[0]);
-        }
-
-        setAvailableDates(dates);
-
-        console.log('dates amount', dates.length);
-
-      } catch (error) {
-        console.error('Failed to fetch available dates:', error);
-      } finally {
-        setLoading(false);
+      // HEADERS: [X-RateLimit-Limit] & [X-RateLimit-Remaining]
+      if (response.headers.get('X-RateLimit-Remaining')) {
+        const rateLimitLimit = parseInt(response.headers.get('X-RateLimit-Limit') || '0');
+        const rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '0');
+        setApiLimit({ used: rateLimitLimit - rateLimitRemaining, total: rateLimitLimit });
       }
-    };
 
-    fetchAvailableDates();
+      const datesList = await response.json();
+      const dates = [];
+      // Use the actual length of datesList instead of rateLimitLimit
+      for (let i = 0; i < datesList.length; i++) {
+        const date = new Date(datesList[i]);
+        dates.push(date.toISOString().split('T')[0]);
+      }
+
+      setAvailableDates(dates);
+      console.log('dates amount', dates.length);
+
+    } catch (error) {
+      console.error('Failed to fetch available dates:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const fetchEpicImages = async (date: string) => {
+  const fetchEpicImages = useCallback(async (date: string) => {
     setLoading(true);
     setError(null);
 
@@ -83,11 +79,35 @@ function HomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Memoize the date change handler
+  const handleDateChange = useCallback((newDate: string) => {
+    setSelectedDate(newDate);
+  }, []);
+
+  useEffect(() => {
+    fetchAvailableDates();
+  }, [fetchAvailableDates]);
 
   useEffect(() => {
     fetchEpicImages(selectedDate);
-  }, [selectedDate]);
+  }, [selectedDate, fetchEpicImages]);
+
+  // Memoize the loading overlay to prevent unnecessary re-renders
+  const loadingOverlay = useMemo(() => {
+    if (!loading) return null;
+    
+    return (
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-white font-medium">Loading new date...</p>
+          <p className="text-blue-200 text-sm">Fetching Earth images</p>
+        </div>
+      </div>
+    );
+  }, [loading]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
@@ -98,7 +118,7 @@ function HomePage() {
             <Satellite className="h-8 w-8 text-blue-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">NASA EPIC Viewer</h1>
+            <h1 className="text-2xl font-bold text-white">NASA Earth</h1>
             <p className="text-blue-200 text-sm">Earth Polychromatic Imaging Camera</p>
           </div>
         </div>
@@ -111,7 +131,7 @@ function HomePage() {
           <DateSelector
             loading={loading}
             selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
+            onDateChange={handleDateChange}
             availableDates={availableDates}
             disabled={loading}
           />
@@ -119,15 +139,7 @@ function HomePage() {
 
         <div className="max-w-7xl mx-auto relative">
           {/* Loading overlay for smooth transitions */}
-          {loading && (
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl z-10 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                <p className="text-white font-medium">Loading new date...</p>
-                <p className="text-blue-200 text-sm">Fetching Earth images</p>
-              </div>
-            </div>
-          )}
+          {loadingOverlay}
           
           <EarthCarousel
             loading={loading}
