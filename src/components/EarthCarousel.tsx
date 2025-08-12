@@ -33,12 +33,19 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
   // Reset state when new images are received
   useEffect(() => {
     if (images.length > 0) {
+      // Immediately clear all previous state to prevent stale data
       setCurrentImageIndex(0);
       setPreloadedImages({});
       setImageLoadStatus({});
       
-      // Start preloading the first few images immediately
-      preloadCriticalImages();
+      // Start preloading the first few images after state is cleared
+      // Use setTimeout to ensure state updates are processed first
+      setTimeout(() => {
+        const criticalImages = images.slice(0, 3);
+        criticalImages.forEach((image) => {
+          preloadSingleImage(image);
+        });
+      }, 0);
     }
   }, [images]);
 
@@ -47,19 +54,8 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
     setIsPlaying(false);
   }, [selectedDate]);
 
-  // Preload critical images (first 3) for immediate display
-  const preloadCriticalImages = useCallback(async () => {
-    if (images.length === 0) return;
-
-    const criticalImages = images.slice(0, 3);
-    
-    criticalImages.forEach((image) => {
-      preloadSingleImage(image, true);
-    });
-  }, [images]);
-
   // Preload a single image
-  const preloadSingleImage = useCallback(async (image: EpicImage, isCritical = false) => {
+  const preloadSingleImage = useCallback(async (image: EpicImage) => {
     if (preloadedImages[image.identifier]) return; // Already loaded
 
     setImageLoadStatus(prev => ({ ...prev, [image.identifier]: 'loading' }));
@@ -109,6 +105,37 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
     return () => clearTimeout(timer);
   }, [images, preloadSingleImage]);
 
+  // Clean up stale image load status entries when images change
+  useEffect(() => {
+    if (images.length === 0) return;
+    
+    const currentImageIds = new Set(images.map(img => img.identifier));
+    
+    // Immediately remove any image load status entries that are no longer in the current images array
+    setImageLoadStatus(prev => {
+      const cleaned: { [key: string]: 'loading' | 'loaded' | 'error' } = {};
+      // Only keep entries for current images
+      Object.keys(prev).forEach(key => {
+        if (currentImageIds.has(key)) {
+          cleaned[key] = prev[key];
+        }
+      });
+      return cleaned;
+    });
+    
+    // Also clean up preloaded images immediately
+    setPreloadedImages(prev => {
+      const cleaned: { [key: string]: string } = {};
+      // Only keep entries for current images
+      Object.keys(prev).forEach(key => {
+        if (currentImageIds.has(key)) {
+          cleaned[key] = prev[key];
+        }
+      });
+      return cleaned;
+    });
+  }, [images]);
+
   // Auto-play functionality - only start when current image is loaded
   useEffect(() => {
     if (!isPlaying || images.length <= 1) return;
@@ -146,8 +173,11 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
   // Check if all images are loaded
   const allImagesLoaded = images.length > 0 && 
     Object.values(imageLoadStatus).filter(status => status === 'loaded').length === images.length;
-  const loadingProgress = images.length > 0 ? 
-    (Object.values(imageLoadStatus).filter(status => status === 'loaded').length / images.length) * 100 : 0;
+  
+  // Calculate loading progress with safeguards to prevent exceeding 100%
+  const loadedCount = Object.values(imageLoadStatus).filter(status => status === 'loaded').length;
+  const totalImages = images.length;
+  const loadingProgress = totalImages > 0 ? Math.min((loadedCount / totalImages) * 100, 100) : 0;
 
   // Show content immediately if we have images, even if not all are preloaded
   if (!currentImage) {
