@@ -6,7 +6,7 @@
 
   $ npm install
 
-development:
+## Development:
 
   $ npm run start
 
