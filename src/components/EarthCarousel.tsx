@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, SkipBack, SkipForward, Pause, Play } from 'lucide-react';
+import { SkipBack, SkipForward, Pause, Play } from 'lucide-react';
 import { EpicImage } from '../types/';
+import LoadingSpinner from './LoadingSpinner';
 
 interface EarthCarouselProps {
   images: EpicImage[];
@@ -110,15 +111,15 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
   const currentImage = images[currentImageIndex];
   const currentImageUrl = currentImage ? preloadedImages[currentImage.identifier] : '';
 
-  if (!currentImage) {
-    return null;
-  }
+  // if (!currentImage) {
+  //   return null;
+  // }
 
   // Show loading state if images aren't ready
   if (!allImagesLoaded) {
     return (
       <div className="relative">
-        <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl mx-auto max-w-2xl">
+        {/* <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl mx-auto max-w-2xl">
           <div className="aspect-square relative flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="h-12 w-12 text-blue-400 animate-spin mx-auto mb-4" />
@@ -137,133 +138,188 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ images, selectedDate }) =
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
+
+        {loadingProgress > 0 && (
+          <LoadingSpinner progress={loadingProgress} />
+        )}
       </div>
     );
   }
 
   return (
-    <div className="relative">
-      {/* Main Image Display */}
-      <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl mx-auto max-w-2xl">
-        <div className="aspect-square relative">
-          <img
-            src={currentImageUrl}
-            alt={`Earth from DSCOVR - ${currentImage.caption}`}
-            className="w-full h-full object-cover transition-opacity duration-200"
-            onError={(e) => {
-              console.error('Image failed to load:', e);
-            }}
-          />
-          
-          {/* Overlay with image info */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-            <div className="text-white">
-              <h3 className="text-lg font-semibold mb-1">{currentImage.caption}</h3>
-              <p className="text-blue-200 text-sm">
-                Image {currentImageIndex + 1} of {images.length} • {currentImage.date}
-              </p>
-            </div>
-          </div>
-
-          {/* Play indicator */}
-          {isPlaying && (
-            <div className="absolute top-4 right-4 bg-red-500 px-3 py-1 rounded-full text-white text-sm font-medium animate-pulse">
-              ● LIVE
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Progress Indicators */}
-      <div className="flex justify-center mt-6 space-x-2">
-        {images.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => {
-              setCurrentImageIndex(index);
-              setIsPlaying(false);
-            }}
-            className={`w-2 h-2 rounded-full transition-all duration-200 ${
-              index === currentImageIndex 
-                ? 'bg-blue-400 w-8' 
-                : 'bg-white/30 hover:bg-white/50'
-            }`}
-          />
-        ))}
-      </div>
-
-      {/* Image Counter */}
-      <div className="text-center mt-4">
-        <p className="text-blue-200 text-sm">
-          Showing Earth's rotation over {images.length} images captured on {selectedDate}
-        </p>
-        <div className="flex items-center justify-center mt-2 space-x-4 text-xs text-blue-300">
-          <span>Frame Rate: {isPlaying ? '1.67 FPS' : 'Paused'}</span>
-          <span>•</span>
-          <span>Resolution: 2048×2048</span>
-          <span>•</span>
-          <span>Source: DSCOVR Satellite</span>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="flex items-center justify-center space-x-4">
-        <button
-          onClick={handlePrevious}
-          className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
-          disabled={images.length <= 1}
-        >
-          <SkipBack className="h-5 w-5" />
-        </button>
-        
-        <button
-          onClick={handlePlayPause}
-          className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-200 hover:scale-105 shadow-lg"
-        >
-          {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-        </button>
-        
-        <button
-          onClick={handleNext}
-          className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
-          disabled={images.length <= 1}
-        >
-          <SkipForward className="h-5 w-5" />
-        </button>
-      </div>
-
-      {/* Image Info */}
-      {images[currentImageIndex] && (
-        <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 mt-4">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Image Details</h3>
-              <p className="text-blue-200 text-sm mb-2">
-                <span className="font-medium">Identifier:</span> {images[currentImageIndex].identifier}
-              </p>
-              <p className="text-blue-200 text-sm mb-2">
-                <span className="font-medium">Caption:</span> {images[currentImageIndex].caption}
-              </p>
-              <p className="text-blue-200 text-sm">
-                <span className="font-medium">Date:</span> {images[currentImageIndex].date}
-              </p>
-            </div>
+    <div className="grid lg:grid-cols-2 gap-8 items-start">
+      {/* Left Side: Image and Controls */}
+      <div className="space-y-6">
+        {/* Main Image Display */}
+        <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl mx-auto max-w-xl lg:max-w-lg">
+          <div className="aspect-square relative">
+            <img
+              src={currentImageUrl}
+              alt={`Earth from DSCOVR - ${currentImage.caption}`}
+              className="w-full h-full object-cover transition-opacity duration-200"
+              onError={(e) => {
+                console.error('Image failed to load:', e);
+              }}
+            />
             
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Earth Coordinates</h3>
-              <p className="text-blue-200 text-sm mb-2">
-                <span className="font-medium">Latitude:</span> {images[currentImageIndex].centroid_coordinates.lat.toFixed(2)}°
-              </p>
-              <p className="text-blue-200 text-sm">
-                <span className="font-medium">Longitude:</span> {images[currentImageIndex].centroid_coordinates.lon.toFixed(2)}°
-              </p>
+            {/* Overlay with image info */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+              <div className="text-white">
+                <h3 className="text-lg font-semibold mb-1">{currentImage.caption}</h3>
+                <p className="text-blue-200 text-sm">
+                  Image {currentImageIndex + 1} of {images.length} • {currentImage.date}
+                </p>
+              </div>
+            </div>
+
+            {/* Play indicator */}
+            {isPlaying && (
+              <div className="absolute top-4 right-4 bg-red-500 px-3 py-1 rounded-full text-white text-sm font-medium animate-pulse">
+                ● LIVE
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Progress Indicators */}
+        <div className="flex justify-center space-x-2">
+          {images.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                setCurrentImageIndex(index);
+                setIsPlaying(false);
+              }}
+              className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                index === currentImageIndex 
+                  ? 'bg-blue-400 w-8' 
+                  : 'bg-white/30 hover:bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center justify-center space-x-4">
+
+          <button
+            onClick={handlePrevious}
+            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
+            disabled={images.length <= 1}
+          >
+            <SkipBack className="h-5 w-5" />
+          </button>
+          
+          <button
+            onClick={handlePlayPause}
+            className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-200 hover:scale-105 shadow-lg"
+          >
+            {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+          </button>
+          
+          <button
+            onClick={handleNext}
+            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white transition-all duration-200 hover:scale-105"
+            disabled={images.length <= 1}
+          >
+            <SkipForward className="h-5 w-5" />
+          </button>
+          
+        </div>
+
+        {/* Image Counter */}
+        <div className="text-center">
+          <p className="text-blue-200 text-sm">
+            Showing Earth's rotation over {images.length} images captured on {selectedDate}
+          </p>
+          <div className="flex items-center justify-center mt-2 space-x-4 text-xs text-blue-300">
+            <span>Frame Rate: {isPlaying ? '1.67 FPS' : 'Paused'}</span>
+            <span>•</span>
+            <span>Resolution: 2048×2048</span>
+            <span>•</span>
+            <span>Source: DSCOVR Satellite</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side: Detailed Image Info */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 lg:sticky lg:top-6">
+        <h3 className="text-xl font-bold text-white mb-4">Image Details</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-sm font-semibold text-blue-300 uppercase tracking-wide mb-2">Current Image</h4>
+            <p className="text-white text-lg font-medium mb-1">{currentImage.caption}</p>
+            <p className="text-blue-200 text-sm">
+              <span className="font-medium">Identifier:</span> {currentImage.identifier}
+            </p>
+            <p className="text-blue-200 text-sm">
+              <span className="font-medium">Date:</span> {currentImage.date}
+            </p>
+          </div>
+          
+          <div className="border-t border-white/10 pt-4">
+            <h4 className="text-sm font-semibold text-blue-300 uppercase tracking-wide mb-2">Earth Coordinates</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-blue-200 text-sm">
+                  <span className="font-medium">Latitude</span>
+                </p>
+                <p className="text-white text-lg font-mono">
+                  {currentImage.centroid_coordinates.lat.toFixed(2)}°
+                </p>
+              </div>
+              <div>
+                <p className="text-blue-200 text-sm">
+                  <span className="font-medium">Longitude</span>
+                </p>
+                <p className="text-white text-lg font-mono">
+                  {currentImage.centroid_coordinates.lon.toFixed(2)}°
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-4">
+            <h4 className="text-sm font-semibold text-blue-300 uppercase tracking-wide mb-2">Satellite Position</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-blue-200">X:</span>
+                <span className="text-white font-mono">{currentImage.dscovr_j2000_position.x.toFixed(0)} km</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-200">Y:</span>
+                <span className="text-white font-mono">{currentImage.dscovr_j2000_position.y.toFixed(0)} km</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-200">Z:</span>
+                <span className="text-white font-mono">{currentImage.dscovr_j2000_position.z.toFixed(0)} km</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-4">
+            <h4 className="text-sm font-semibold text-blue-300 uppercase tracking-wide mb-2">Session Info</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-blue-200">Total Images:</span>
+                <span className="text-white">{images.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-200">Current Frame:</span>
+                <span className="text-white">{currentImageIndex + 1}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-200">Status:</span>
+                <span className={isPlaying ? "text-green-400" : "text-yellow-400"}>
+                  {isPlaying ? "Playing" : "Paused"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      )}
-
-
+      </div>
     </div>
   );
 };
