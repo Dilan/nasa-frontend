@@ -77,7 +77,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
       const handleError = () => {
         console.error(`Failed to preload image ${image.identifier}`);
         // Fallback to direct API URL
-        setPreloadedImages(prev => ({ ...prev, [image.identifier]: `/api/v1/epic/image/${image.image}` }));
+        setPreloadedImages(prev => ({ ...prev, [image.identifier]: `/epic/images/${image.image}.png` }));
         setImageLoadStatus(prev => ({ ...prev, [image.identifier]: 'error' }));
         resolve();
       };
@@ -142,6 +142,12 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
   const currentImage = images[currentImageIndex];
   const currentImageUrl = currentImage ? preloadedImages[currentImage.identifier] : '';
   const isCurrentImageLoaded = currentImage && imageLoadStatus[currentImage.identifier] === 'loaded';
+  
+  // Check if all images are loaded
+  const allImagesLoaded = images.length > 0 && 
+    Object.values(imageLoadStatus).filter(status => status === 'loaded').length === images.length;
+  const loadingProgress = images.length > 0 ? 
+    (Object.values(imageLoadStatus).filter(status => status === 'loaded').length / images.length) * 100 : 0;
 
   // Show content immediately if we have images, even if not all are preloaded
   if (!currentImage) {
@@ -227,8 +233,8 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
           
           <button
             onClick={handlePlayPause}
-            className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
-            disabled={!isCurrentImageLoaded}
+            className="p-4 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!allImagesLoaded}
           >
             {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
           </button>
@@ -241,6 +247,24 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
             <SkipForward className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Loading Progress for Play Button */}
+        {!allImagesLoaded && images.length > 0 && (
+          <div className="text-center">
+            <p className="text-blue-200 text-sm mb-2">
+              Loading images... {Math.round(loadingProgress)}% complete
+            </p>
+            <div className="w-full bg-white/10 rounded-full h-2 mx-auto max-w-xs">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-in-out"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+            <p className="text-blue-300 text-xs mt-1">
+              {Object.values(imageLoadStatus).filter(status => status === 'loaded').length} of {images.length} images ready
+            </p>
+          </div>
+        )}
 
         {/* Image Counter */}
         <div className="text-center">
