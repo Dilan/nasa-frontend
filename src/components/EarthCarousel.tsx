@@ -143,7 +143,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
     const currentImage = images[currentImageIndex];
     if (!currentImage || imageLoadStatus[currentImage.identifier] !== 'loaded') return;
 
-    console.log('Starting auto-play with', images.length, 'images');
+    // console.log('Starting auto-play with', images.length, 'images');
     
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => {
@@ -153,7 +153,7 @@ const EarthCarousel: React.FC<EarthCarouselProps> = ({ loading, images, selected
     }, 600);
 
     return () => {
-      console.log('Clearing auto-play interval');
+      // console.log('Clearing auto-play interval');
       clearInterval(interval);
     };
   }, [isPlaying, currentImageIndex, images, imageLoadStatus]);
