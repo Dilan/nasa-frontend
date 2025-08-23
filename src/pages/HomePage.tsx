@@ -4,6 +4,7 @@ import RateLimitDisplay from '../components/RateLimitDisplay';
 import DateSelector from '../components/DateSelector';
 import EarthCarousel from '../components/EarthCarousel';
 import { EpicImage } from '../types';
+import { toast } from 'sonner';
 
 function HomePage() {
   const [selectedDate, setSelectedDate] = useState<string>('2025-07-15');
@@ -19,6 +20,13 @@ function HomePage() {
     
     try {
       const response = await fetch('/api/v1/epic/available-dates');
+
+      // console.log('response', response.status);
+      if (response.status >= 400) {
+        toast.error('Failed to fetch available dates. Please try again later.');
+        setLoading(false);
+        return;
+      }
 
       // HEADERS: [X-RateLimit-Limit] & [X-RateLimit-Remaining]
       if (response.headers.get('X-RateLimit-Remaining')) {
@@ -40,6 +48,8 @@ function HomePage() {
 
     } catch (error) {
       console.error('Failed to fetch available dates:', error);
+      // Add a small delay to prevent toast conflicts
+      toast.error('Failed to fetch available dates. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -74,7 +84,12 @@ function HomePage() {
       setImages(data);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch images');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch images';
+      // Add a small delay to prevent toast conflicts
+      setTimeout(() => {
+        toast.error(errorMessage);
+      }, 100);
+      setError(errorMessage);
       setImages([]);
     } finally {
       setLoading(false);
@@ -122,7 +137,9 @@ function HomePage() {
             <p className="text-blue-200 text-sm">Earth Polychromatic Imaging Camera</p>
           </div>
         </div>
-        <RateLimitDisplay apiLimit={apiLimit} />
+        <div className="flex items-center space-x-4">
+          <RateLimitDisplay apiLimit={apiLimit} />
+        </div>
       </header>
 
       <main className="px-6 pb-6">

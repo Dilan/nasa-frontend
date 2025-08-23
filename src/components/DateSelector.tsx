@@ -60,7 +60,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
             <Calendar className="h-5 w-5 text-blue-400" />
             <div>
               <p className="text-white font-medium">Selected Date</p>
-              <p className="text-blue-200 text-sm">
+              <div className="text-blue-200 text-sm">
                 {loading ? (
                   <span className="flex items-center space-x-2">
                     <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
@@ -69,7 +69,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
                 ) : (
                   formatDisplayDate(selectedDate)
                 )}
-              </p>
+              </div>
             </div>
           </div>
           <ChevronDown 
